@@ -6,7 +6,7 @@ import random
 from math import floor
 
 class VAE(nn.Module):
-	def __init__(self, img_size, latent_space, num_input_channel, num_feature_map = [1, 32, 64, 64],
+	def __init__(self, img_size, latent_space, num_input_channel, encoder_num_feature_map = [1, 32, 64, 64], decoder_num_feature_map = [64, 32, 32, 1],
 				 depth = 3, hidden_dim = 256, data_parallel = False, drop_rate = 0.0, use_gpu = False):
 		super(VAE, self).__init__()
 		self.is_continous = 'cont' in latent_space
@@ -15,7 +15,8 @@ class VAE(nn.Module):
 		self.img_size = img_size
 		self.latent_space = latent_space
 		self.num_input_channel = num_input_channel
-		self.num_feature_map = num_feature_map # must be a depth+1 array
+		self.encoder_num_feature_map = encoder_num_feature_map # must be a depth+1 array
+		self.decoder_num_feature_map = decoder_num_feature_map
 		self.depth = depth
 		self.hidden_dim = hidden_dim
 		self.data_parallel = data_parallel
@@ -45,11 +46,11 @@ class VAE(nn.Module):
 		self.decoder = nn.Sequential()
 		#encoder
 		for i in range(depth):
-			self.encoder.add_module("conv%d"%(i+1), nn.Conv2d(self.num_feature_map[i], self.num_feature_map[i + 1], kernel_size = 4, stride = 2, padding = 1, bias = True))
-			self.encoder.add_module("relu%d"%(i+1), nn.LeakyReLU())
+			self.encoder.add_module("conv%d"%(i+1), nn.Conv2d(self.encoder_num_feature_map[i], self.encoder_num_feature_map[i + 1], kernel_size = 4, stride = 2, padding = 1, bias = True))
+			self.encoder.add_module("relu%d"%(i+1), nn.ReLU())
 		
-		self.encoder_to_hidden.add_module("fc", nn.Linear(self.num_feature_map[depth] * self.feature_map_size * self.feature_map_size, hidden_dim))
-		self.encoder_to_hidden.add_module("relu", nn.LeakyReLU())
+		self.encoder_to_hidden.add_module("fc", nn.Linear(self.encoder_num_feature_map[depth] * self.feature_map_size * self.feature_map_size, hidden_dim))
+		self.encoder_to_hidden.add_module("relu", nn.ReLU())
 		#encode to distribution paras
 		if self.is_continous:
 			self.cont_mean = nn.Linear(hidden_dim, self.latent_cont_dim)
@@ -61,14 +62,15 @@ class VAE(nn.Module):
 			self.alphas = nn.ModuleList(alphas)
 		#latent variabels to features
 		self.decoder_latent2feature.add_module("fc1", nn.Linear(self.latent_dim, hidden_dim))
-		self.decoder_latent2feature.add_module("relu1", nn.LeakyReLU())
-		self.decoder_latent2feature.add_module("fc2", nn.Linear(hidden_dim, num_feature_map[depth] * self.feature_map_size * self.feature_map_size))
-		self.decoder_latent2feature.add_module("relu2", nn.LeakyReLU())
+		self.decoder_latent2feature.add_module("relu1", nn.ReLU())
+		self.decoder_latent2feature.add_module("fc2", nn.Linear(hidden_dim, decoder_num_feature_map[0] * self.feature_map_size * self.feature_map_size))
+		self.decoder_latent2feature.add_module("relu2", nn.ReLU())
 		
 		#decoder
 		for i in range(depth):
-			self.decoder.add_module("convt%d"%(i+1), nn.ConvTranspose2d(num_feature_map[depth-i], num_feature_map[depth-i-1], kernel_size = 4, stride = 2, padding = 1, bias = True))
-			self.decoder.add_module("relu%d"%(i+1), nn.LeakyReLU())
+			self.decoder.add_module("convt%d"%(i+1), nn.ConvTranspose2d(decoder_num_feature_map[i], decoder_num_feature_map[i+1], kernel_size = 4, stride = 2, padding = 1, bias = True))
+			if i != depth-1:
+				self.decoder.add_module("relu%d"%(i+1), nn.ReLU())
 		self.decoder.add_module("sigmoid", nn.Sigmoid())
 		pass
 	def encode_phase(self, x):
@@ -128,7 +130,7 @@ class VAE(nn.Module):
 
 	def decode_phase(self, latents_sample):
 		features = self.decoder_latent2feature(latents_sample)
-		feature_maps =  features.view(-1, self.num_feature_map[self.depth], self.feature_map_size, self.feature_map_size)
+		feature_maps =  features.view(-1, self.encoder_num_feature_map[self.depth], self.feature_map_size, self.feature_map_size)
 		return self.decoder(feature_maps)
 
 	def forward(self, x):

@@ -30,7 +30,7 @@ class config:
 		self.workers = 4
 		self.batch_size = 64
 		self.number_mark = 1
-		self.epochs = 10
+		self.epochs = 100
 		self.start_epoch = 0
 		self.data_paralle = False #not used
 		self.print_freq = 50
@@ -46,7 +46,8 @@ class config:
 		self.net_name = 'VAE' 
 		self.depth = 3
 		self.hidden_dim = 256
-		self.num_feature_maps = [1, 32, 64, 64]
+		self.encoder_num_feature_maps = [1, 32, 64, 64]
+		self.decoder_num_feature_maps = [64, 32, 32, 1]
 		self.num_input_channel = 1
 		self.cont_latent_num = 10
 		self.disc_latent_size = [10]
@@ -62,7 +63,7 @@ class config:
 		self.adjust_lr = [60,120,160]
 		self.lr_decay_ratio = 0.2
 		self.weight_decay = 5e-4
-		self.warm_up_lr = 0.0001
+		self.warm_up_lr = 0.0005
 		self.gpu = "0"
 		pass
 
@@ -92,7 +93,7 @@ def main(args = args):
 			latent_space['cont'] = args.cont_latent_num
 		if args.disc_latent_size != []:
 			latent_space['disc'] = args.disc_latent_size
-		model = VAE(args.image_size, latent_space, args.num_input_channel, args.num_feature_maps,
+		model = VAE(args.image_size, latent_space, args.num_input_channel, args.encoder_num_feature_maps, args.decoder_num_feature_maps,
 					depth = args.depth, hidden_dim = args.hidden_dim, data_parallel = args.data_paralle,
 					drop_rate = args.drop_rate, use_gpu = use_gpu)
 	else:
@@ -112,7 +113,7 @@ def main(args = args):
 	scheduler = MultiStepLR(optimizer, milestones = args.adjust_lr, gamma = args.lr_decay_ratio)
 
 	#resume model
-	writer_log_dir = "{}/{}/runs/number_mark".format(args.base_path, args.dataset, args.number_mark)
+	writer_log_dir = "{}/{}/runs/number_mark:{}".format(args.base_path, args.dataset, args.number_mark)
 	if args.resume:
 		if os.path.isfile(args.resume):
 			print("=> loading checkpoint '{}'".format(args.resume))
