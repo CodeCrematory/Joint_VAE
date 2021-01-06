@@ -13,4 +13,7 @@ architecture: https://github.com/FengHZ/mixupfamily
 而且我多训练了100个epoch才。。。。
 
 ![test result](./image/test1.png)
+
 ![test result2](./image/test2.png)
+
+2021.1.6 test

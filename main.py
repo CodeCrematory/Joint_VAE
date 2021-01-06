@@ -30,7 +30,7 @@ class config:
 		self.workers = 4
 		self.batch_size = 64
 		self.number_mark = 1
-		self.epochs = 100
+		self.epochs = 200
 		self.start_epoch = 0
 		self.data_paralle = False #not used
 		self.print_freq = 50
